@@ -1,0 +1,42 @@
+{
+  "name": "smsi",
+  "version": "1.0.0",
+  "description": "Simple MicroService Interface",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "tsc --project .",
+    "lint": "tslint --project .",
+    "test": "jest",
+    "watch": "mocha -r ts-node/register --watch-extensions ts -w src/**/*.spec.ts"
+  },
+  "keywords": [],
+  "author": "Jonathan Diehl",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/got": "^8.3.3",
+    "@types/jest": "^23.3.0",
+    "got": "^8.3.2",
+    "jest": "^23.4.1",
+    "ts-jest": "^23.0.1",
+    "tslint": "^5.11.0",
+    "typescript": "^2.9.2"
+  },
+  "dependencies": {
+    "@types/node": "^10.5.2"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json",
+      "node"
+    ]
+  }
+}
