@@ -1,0 +1,33 @@
+{
+  "name": "smsi",
+  "version": "1.0.1-pre",
+  "description": "Simple MicroService Interface",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "tsc --project .",
+    "lint": "tslint --project .",
+    "test": "jest",
+    "watch": "jest --watchAll",
+    "prepublishOnly": "yarn test; yarn build",
+    "bump": "npm-bump patch",
+    "clean": "del index.js index.d.ts 'src/**/*.d.ts' 'src/**/*.js'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jdiehl/smsi.git"
+  },
+  "keywords": [
+    "microservices",
+    "interface"
+  ],
+  "author": "Jonathan Diehl",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/got": "^8.3.3",
+    "got": "^8.3.2"
+  },
+  "dependencies": {
+    "@types/node": "^10.5.2"
+  }
+}
