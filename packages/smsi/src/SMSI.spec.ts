@@ -1,3 +1,4 @@
+import { EventEmitter } from 'events'
 import * as WebSocket from 'ws'
 import { SMSIExposeOptions, SMSIServerOptions } from './interfaces'
 import { SMSI } from './SMSI'
@@ -46,7 +47,7 @@ test('should call init', async () => {
   expect(init).toHaveBeenCalledTimes(1)
 })
 
-test('should expose a method', async () => {
+test('should call a method', async () => {
   const hello = jest.fn().mockResolvedValue('ok')
   await start({ hello })
   await connect()
@@ -61,4 +62,48 @@ test('should pass params to a method', async () => {
   await connect()
   const res = await sendCommand({ service: 'test', method: 'hello', params: [1, 'a', { foo: 'bar' }] })
   expect(hello).toHaveBeenCalledWith(1, 'a', { foo: 'bar' })
+})
+
+test('should trigger on an event', async () => {
+  const service = new EventEmitter()
+  await start(service)
+  await connect()
+  return new Promise(resolve => {
+    ws.on('message', msg => {
+      expect(JSON.parse(msg.toString())).toEqual({ service: 'test', event: 'world', params: [] })
+      resolve()
+    })
+    ws.send(JSON.stringify({ service: 'test', event: 'world' }))
+    setTimeout(() => service.emit('world'), 10)
+  })
+})
+
+test('should trigger on each event', async () => {
+  const service = new EventEmitter()
+  await start(service)
+  await connect()
+  return new Promise(resolve => {
+    let count = 0
+    ws.on('message', msg => {
+      if (++count === 3) resolve()
+    })
+    ws.send(JSON.stringify({ service: 'test', event: 'world' }))
+    setTimeout(() => service.emit('world'), 10)
+    setTimeout(() => service.emit('world'), 11)
+    setTimeout(() => service.emit('world'), 12)
+  })
+})
+
+test('should trigger on an event with params', async () => {
+  const service = new EventEmitter()
+  await start(service)
+  await connect()
+  return new Promise(resolve => {
+    ws.on('message', msg => {
+      expect(JSON.parse(msg.toString())).toEqual({ service: 'test', event: 'world', params: ['a', { foo: 'bar' }] })
+      resolve()
+    })
+    ws.send(JSON.stringify({ service: 'test', event: 'world' }))
+    setTimeout(() => service.emit('world', 'a', { foo: 'bar' }), 10)
+  })
 })

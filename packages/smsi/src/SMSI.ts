@@ -91,12 +91,13 @@ export class SMSI extends EventEmitter {
         if (typeof service.on !== 'function' || typeof service.off !== 'function') {
           return this.send(client, { error: `Invalid message: service ${command.service} does not support events` })
         }
+        const listener = (...params: any[]) => {
+          this.send(client, { service: command.service, event, params })
+        }
         events[command.service] = events[command.service] || {}
         events[command.service][event] = events[command.service][event] || []
-        events[command.service][event].push((...params: any[]) => {
-          this.send(client, { event, params })
-        })
-        service.on(event, events[command.service][event])
+        events[command.service][event].push(listener)
+        service.on(event, listener)
       } else {
         // execute a method
         if (typeof service[method] !== 'function') return this.send(client, { error: `Invalid message: ${command.service}.${method} does not exist` })
