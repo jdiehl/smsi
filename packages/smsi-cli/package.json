@@ -9,7 +9,7 @@
     "test": "jest",
     "watch": "jest --watchAll",
     "prepublishOnly": "yarn test; yarn build",
-    "clean": "del index.js 'src/**/*.js'"
+    "clean": "del index.js 'recipes/**/*.js'"
   },
   "keywords": [
     "microservices",
