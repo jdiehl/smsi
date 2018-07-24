@@ -1,19 +1,21 @@
-import { createServer, IncomingMessage, Server, ServerResponse } from 'http'
-import { AddressInfo } from 'net'
-import { SMSICommand, SMSIExposeOptions, SMSIServerOptions, SMSIService } from './interfaces'
+import { EventEmitter } from 'events'
+import * as WebSocket from 'ws'
+import { SMSIExposeOptions, SMSIServerOptions, SMSIService } from './interfaces'
 
-export class SMSI {
-  server?: Server
+export class SMSI extends EventEmitter {
+  server?: WebSocket.Server
 
   private services: Record<string, SMSIService> = {}
   private constructors: any[] = []
 
-  get address(): AddressInfo {
+  get address(): WebSocket.AddressInfo {
     if (!this.server) throw new Error(`Cannot get address: server not running`)
-    return this.server.address() as AddressInfo
+    return this.server.address() as WebSocket.AddressInfo
   }
 
-  constructor(private options: SMSIServerOptions = {}) {}
+  constructor(private options: SMSIServerOptions = {}) {
+    super()
+  }
 
   // expose a microservice
   expose(name: string, service: SMSIService, options: SMSIExposeOptions) {
@@ -31,8 +33,10 @@ export class SMSI {
 
   async stop() {
     if (!this.server) throw new Error(`Cannot stop server: not running`)
-    this.server!.close()
-    this.server = undefined
+    return new Promise((resolve, reject) => {
+      this.server!.close((err) => err ? reject(err) : resolve())
+      this.server = undefined
+    })
   }
 
   // private methods
@@ -44,70 +48,96 @@ export class SMSI {
 
   // start the server
   private async listen() {
-    this.server = createServer((req, res) => this.handleRequest(req, res))
-    return new Promise(resolve => this.server!.listen(this.options.port, this.options.hostname, resolve))
+    this.server = new WebSocket.Server(this.options)
+    this.server!.on('connection', client => this.onConnection(client))
+    this.server!.on('error', err => this.emit('error', err))
+    return new Promise(resolve => this.server!.on('listening', () => resolve()))
   }
 
-  // handle a request
-  private handleRequest(req: IncomingMessage, res: ServerResponse) {
+  private async onConnection(client: WebSocket): Promise<void> {
+    const events: Record<string, Record<string, any[]>> = {}
 
-    // fetch and parse the command body
-    const buf: any[] = []
-    req.on('data', chunk => buf.push(chunk))
-    req.on('end', () => {
-      const body = Buffer.concat(buf).toString()
-      let cmd: any
-      try {
-        cmd = JSON.parse(body)
-      } catch (err) {
-        res.statusCode = 400
-        res.write(`Could not parse command`)
-        res.end()
-        return
+    // error handling
+    client.on('error', err => this.emit('error', err))
+
+    // connection handling
+    client.on('close', () => {
+      for (const service of Object.keys(events)) {
+        for (const event of Object.keys(events[service])) {
+          for (const listener of events[service][event]) {
+            this.services[service].off(event, listener)
+          }
+        }
       }
+    })
+
+    // message handling
+    client.on('message', message => {
+
+      // parse the message
+      const command = this.parse(message)
+      if (!command) return this.send(client, { error: `Invalid message: could not parse "${message}"` })
 
       // validate the command
-      if (!this.validateCommand(cmd)) {
-        res.statusCode = 400
-        res.write(`Invalid command`)
-        res.end()
-        return
+      if (!this.validateCommand(command)) return this.send(client, { error: `Invalid message: unknown command` })
+
+      // get the service
+      const service = this.services[command.service]
+      if (!service) return this.send(client, { error: `Invalid message: service ${command.service} does not exist` })
+
+      const { event, method } = command
+      if (event) {
+        // subscribe to an event
+        if (typeof service.on !== 'function' || typeof service.off !== 'function') {
+          return this.send(client, { error: `Invalid message: service ${command.service} does not support events` })
+        }
+        events[command.service] = events[command.service] || {}
+        events[command.service][event] = events[command.service][event] || []
+        events[command.service][event].push((...params: any[]) => {
+          this.send(client, { event, params })
+        })
+        service.on(event, events[command.service][event])
+      } else {
+        // execute a method
+        if (typeof service[method] !== 'function') return this.send(client, { error: `Invalid message: ${command.service}.${method} does not exist` })
+        Promise.resolve(service[method].apply(service, command.params || [])).then(
+          result => this.send(client, { service: command.service, method, result }),
+          error => this.send(client, { service: command.service, method, error })
+        )
       }
 
-      // execute the command and return its result
-      this.executeCommand(cmd)
-      .then(result => {
-        try {
-          if (result) res.write(JSON.stringify(result))
-        } catch (err) {
-          res.statusCode = 500
-          res.write(`Service returned invalid result`)
-        }
-        res.end()
-      }, err => {
-        res.statusCode = 500
-        res.write(err.toString())
-        res.end()
-      })
     })
+  }
+
+  // send a message
+  private send(client: WebSocket, data: any) {
+    client.send(JSON.stringify(data))
+  }
+
+  // parse a message
+  private parse(message: WebSocket.Data): any {
+    try {
+      return JSON.parse(message.toString())
+    } catch (err) {
+      return
+    }
   }
 
   // validate a command
   private validateCommand(cmd: any): boolean {
     if (typeof cmd !== 'object') return false
     if (typeof cmd.service !== 'string' || cmd.service.length < 1) return false
-    if (typeof cmd.method !== 'string' || cmd.method.length < 1) return false
-    if (cmd.params && !(cmd.params instanceof Array)) return false
+    if (cmd.method !== undefined) {
+      // SMSICommandMethod
+      if (typeof cmd.method !== 'string' || cmd.method.length < 1) return false
+      if (cmd.params && !(cmd.params instanceof Array)) return false
+    } else if (cmd.event !== undefined) {
+      // SMSICommandEvent
+      if (typeof cmd.event !== 'string' || cmd.event.length < 1) return false
+    } else {
+      return false
+    }
     return true
-  }
-
-  // execute a command
-  private async executeCommand(cmd: SMSICommand): Promise<any> {
-    const service = this.services[cmd.service]
-    if (!service) throw new Error(`Cannot invoke service ${cmd.service}: not found`)
-    const method = service[cmd.method]
-    if (!method) throw new Error(`Cannot invoke method ${cmd.method} on service ${cmd.service}: not found`)
-    return await method.apply(null, cmd.params || [])
   }
 
 }

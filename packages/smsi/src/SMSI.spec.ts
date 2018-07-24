@@ -1,24 +1,43 @@
-import { post } from 'got'
+import * as WebSocket from 'ws'
 import { SMSIExposeOptions, SMSIServerOptions } from './interfaces'
 import { SMSI } from './SMSI'
 
 let smsi: SMSI
+let ws: WebSocket
 
 afterEach(async () => {
   if (smsi && smsi.server) await smsi.stop()
 })
 
 // convenience function to start a microservice
-async function start(service: any, exposeOpt: SMSIExposeOptions = {}, serverOpt: SMSIServerOptions = {}): Promise<SMSI> {
+async function start(service: any, exposeOpt: SMSIExposeOptions = {}, serverOpt: SMSIServerOptions = { port: 9999 }): Promise<SMSI> {
   smsi = new SMSI(serverOpt)
   smsi.expose('test', service, exposeOpt)
   await smsi.start()
   return smsi
 }
 
+async function connect(): Promise<WebSocket> {
+  return new Promise<WebSocket>(resolve => {
+    ws = new WebSocket(`ws://127.0.0.1:${smsi.address.port}`)
+    ws.on('open', () => resolve(ws))
+  })
+}
+
+async function sendCommand(command: any) {
+  return new Promise(resolve => {
+    const handler = response => {
+      ws.off('message', handler)
+      resolve(JSON.parse(response))
+    }
+    ws.on('message', handler)
+    ws.send(JSON.stringify(command))
+  })
+}
+
 test('should use given port', async () => {
-  await start({}, {}, { port: 9999 })
-  expect(smsi.address.port).toBe(9999)
+  await start({}, {}, { port: 8888 })
+  expect(smsi.address.port).toBe(8888)
 })
 
 test('should call init', async () => {
@@ -30,16 +49,16 @@ test('should call init', async () => {
 test('should expose a method', async () => {
   const hello = jest.fn().mockResolvedValue('ok')
   await start({ hello })
-  const body = { service: 'test', method: 'hello' }
-  const res = await post(`http://127.0.0.1:${smsi.address.port}`, { body, json: true })
+  await connect()
+  const res = await sendCommand({ service: 'test', method: 'hello' })
   expect(hello).toHaveBeenCalledTimes(1)
-  expect(res.body).toBe('ok')
+  expect(res).toEqual({ service: 'test', method: 'hello', result: 'ok' })
 })
 
 test('should pass params to a method', async () => {
   const hello = jest.fn()
   await start({ hello })
-  const body = { service: 'test', method: 'hello', params: [1, 'a', { foo: 'bar' }] }
-  await post(`http://127.0.0.1:${smsi.address.port}`, { body, json: true })
+  await connect()
+  const res = await sendCommand({ service: 'test', method: 'hello', params: [1, 'a', { foo: 'bar' }] })
   expect(hello).toHaveBeenCalledWith(1, 'a', { foo: 'bar' })
 })
