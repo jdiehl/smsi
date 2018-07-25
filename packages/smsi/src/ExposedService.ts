@@ -20,7 +20,7 @@ export class ExposedService {
     this.service.on(event, handler)
   }
 
-  off(event: string, handler: () => void) {
+  off(event: string, handler?: () => void) {
     this.service.off(event, handler)
   }
 

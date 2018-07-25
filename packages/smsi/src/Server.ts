@@ -53,7 +53,7 @@ export class Server extends EventEmitter {
 
   private async onConnection(connection: WebSocket): Promise<void> {
     const transport = new Transport(connection)
-    const handlers: Record<string, () => void> = {}
+    const handlers: Record<string, Record<string, Function>> = {}
 
     // error handling
     transport.on('error', err => this.emit('error', err))
@@ -62,23 +62,27 @@ export class Server extends EventEmitter {
     transport.on('exec', async ({ id, service, method, params }) => {
       if (!this.services[service]) return transport.sendError(`Invalid service: ${service}`, id)
       if (!this.services[service].hasMethod(method)) return transport.sendError(`Invalid method: ${service}.${method}`, id)
-      const res = await this.services[service].run(method, params)
+      let res
+      try {
+        res = await this.services[service].run(method, params)
+      } catch (err) {
+        return transport.sendError(err, id)
+      }
       transport.sendResponse(id, res)
     })
 
     // subscribe to events
-    transport.on('subscribe', async ({ id, service, event }) => {
+    transport.on('subscribe', async ({ service, event }) => {
       if (!this.services[service]) return transport.sendError(`Invalid service: ${service}`)
       if (typeof (this.services[service].on) !== 'function') return transport.sendError(`Service does not support events`)
-      handlers[id] = (...params: any[]) => {
-        transport.sendEvent(id, params)
-      }
-      this.services[service].on(event, handlers[id])
+      this.services[service].on(event, (...params: any[]) => {
+        transport.sendEvent(service, event, params)
+      })
     })
 
     // unsubscribe from events
     transport.on('unsubscribe', async ({ id, service, event }) => {
-      this.services[service].off(event, handlers[id])
+      this.services[service].off(event)
     })
 
   }
