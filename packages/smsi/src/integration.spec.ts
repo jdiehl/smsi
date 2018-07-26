@@ -82,3 +82,21 @@ test('should forward multiple events', async () => {
   await wait()
   expect(handler).toHaveBeenCalledTimes(3)
 })
+
+test('should report a missing service', async () => {
+  await expect(client.exec('nope', 'foo')).rejects.toBe('Invalid service: nope')
+})
+
+test('should report a missing method', async () => {
+  await expect(client.exec('s1', 'foo')).rejects.toBe('Invalid method: s1.foo')
+})
+
+test('should forward an rejection as an error', async () => {
+  s1.m1.mockRejectedValue('rejected')
+  await expect(client.exec('s1', 'm1')).rejects.toBe('rejected')
+})
+
+test('should forward an exception as an error', async () => {
+  s1.m1.mockImplementation(() => { throw new Error('thrown') })
+  await expect(client.exec('s1', 'm1')).rejects.toBe('thrown')
+})

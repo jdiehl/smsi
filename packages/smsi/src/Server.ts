@@ -66,7 +66,7 @@ export class Server extends EventEmitter {
       try {
         res = await this.services[service].run(method, params)
       } catch (err) {
-        return transport.sendError(err, id)
+        return transport.sendError(err instanceof Error ? err.message : err.toString(), id)
       }
       transport.sendResponse(id, res)
     })
