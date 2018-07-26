@@ -32,4 +32,8 @@ export class ExposedService {
     return (typeof this.service.on === 'function' && typeof this.service.off === 'function')
   }
 
+  spec(): string[] {
+    return Object.keys(this.service).filter(key => this.service.hasOwnProperty(key) && typeof this.service[key] === 'function')
+  }
+
 }

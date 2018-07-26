@@ -16,15 +16,13 @@ export class Transport extends EventEmitter {
   }
 
   async sendExec(service: string, method: string, params: any[]): Promise<any[]> {
-    const id = this.makeId()
     const type = 'exec'
-    this.send({ id, type, service, method, params })
-    return new Promise<any[]>((resolve, reject) => {
-      this.handlers[id] = (err: string, response: any) => {
-        err ? reject(err) : resolve(response)
-        delete this.handlers[id]
-      }
-    })
+    return this.sendRequest({ type, service, method, params })
+  }
+
+  async sendSpec(service: string): Promise<string[]> {
+    const type = 'spec'
+    return this.sendRequest({ type, service })
   }
 
   sendSubscribe(service: string, event: string, handler: () => void): void {
@@ -78,6 +76,19 @@ export class Transport extends EventEmitter {
   private send(data: any) {
     const message = JSON.stringify(data)
     this.socket.send(message)
+  }
+
+  // send a request
+  private async sendRequest(data: any): Promise<any> {
+    const id = this.makeId()
+    data.id = id
+    this.send(data)
+    return new Promise<any[]>((resolve, reject) => {
+      this.handlers[id] = (err: string, response: any) => {
+        err ? reject(err) : resolve(response)
+        delete this.handlers[id]
+      }
+    })
   }
 
   private makeId(): string {
@@ -137,6 +148,10 @@ export class Transport extends EventEmitter {
     if (typeof message !== 'object') return 'not an object'
     if (typeof message.type !== 'string') return 'type not a string'
     switch (message.type) {
+    case 'spec':
+      if (message.id === undefined) return 'id missing'
+      if (typeof message.service !== 'string' || message.service.length < 1) return 'service not a string'
+      break
     case 'error':
       if (typeof message.error !== 'string') return 'error not a string'
       break

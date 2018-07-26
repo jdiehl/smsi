@@ -100,3 +100,25 @@ test('should forward an exception as an error', async () => {
   s1.m1.mockImplementation(() => { throw new Error('thrown') })
   await expect(client.exec('s1', 'm1')).rejects.toBe('thrown')
 })
+
+test('should create a proxy', async () => {
+  const proxy = await client.makeProxy('s1')
+  expect(Object.keys(proxy)).toEqual(['m1', 'm2'])
+  expect(typeof proxy.m2).toBe('function')
+  expect(typeof proxy.m1).toBe('function')
+})
+
+test('should execute a method via the proxy', async () => {
+  const proxy = await client.makeProxy('s1')
+  const res = await proxy.m1()
+  expect(res).toBe('ok')
+  expect(s1.m1).toHaveBeenCalledTimes(1)
+})
+
+test('should execute a method with params via the proxy', async () => {
+  const proxy = await client.makeProxy('s1')
+  const res = await proxy.m2(1, 'a', { foo: 'bar' })
+  expect(res).toEqual({ foo: 'bar' })
+  expect(s1.m2).toHaveBeenCalledTimes(1)
+  expect(s1.m2).toHaveBeenCalledWith(1, 'a', { foo: 'bar' })
+})

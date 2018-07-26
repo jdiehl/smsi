@@ -58,6 +58,12 @@ export class Server extends EventEmitter {
     // error handling
     transport.on('error', err => this.emit('error', err))
 
+    // send the spec
+    transport.on('spec', async ({ id, service }) => {
+      if (!this.services[service]) return transport.sendError(`Invalid service: ${service}`, id)
+      transport.sendResponse(id, this.services[service].spec())
+    })
+
     // execute a method
     transport.on('exec', async ({ id, service, method, params }) => {
       if (!this.services[service]) return transport.sendError(`Invalid service: ${service}`, id)

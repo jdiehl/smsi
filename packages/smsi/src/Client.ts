@@ -38,6 +38,16 @@ export class Client extends EventEmitter {
     await this.transport!.sendUnsubscribe(service, event, handler)
   }
 
+  async makeProxy<T = any>(service: string): Promise<T> {
+    if (!this.transport) await this.start()
+    const spec = await this.transport!.sendSpec(service)
+    const proxy: any = {}
+    for (const method of spec) {
+      proxy[method] = async (...params: any[]) => this.exec(service, method, params)
+    }
+    return proxy
+  }
+
   // private methods
 
   private restart() {
