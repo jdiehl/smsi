@@ -16,11 +16,11 @@ export class ExposedService {
     return Promise.resolve(this.service[method].apply(this.service, params))
   }
 
-  on(event: string, handler: () => void) {
+  on(event: string, handler: Function) {
     this.service.on(event, handler)
   }
 
-  off(event: string, handler?: () => void) {
+  off(event: string, handler?: Function) {
     this.service.off(event, handler)
   }
 

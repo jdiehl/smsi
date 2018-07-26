@@ -83,6 +83,19 @@ test('should forward multiple events', async () => {
   expect(handler).toHaveBeenCalledTimes(3)
 })
 
+test.skip('should stop forwarding events', async () => {
+  const handler = jest.fn()
+  client.subscribe('s1', 'e1', handler)
+  await wait()
+  s1.emit('e1')
+  await wait()
+  client.unsubscribe('s1', 'e1', handler)
+  await wait()
+  s1.emit('e1')
+  await wait()
+  expect(handler).toHaveBeenCalledTimes(1)
+})
+
 test('should report a missing service', async () => {
   await expect(client.exec('nope', 'foo')).rejects.toBe('Invalid service: nope')
 })
@@ -103,7 +116,7 @@ test('should forward an exception as an error', async () => {
 
 test('should create a proxy', async () => {
   const proxy = await client.makeProxy('s1')
-  expect(Object.keys(proxy)).toEqual(['m1', 'm2'])
+  expect(Object.keys(proxy)).toEqual(['m1', 'm2', 'on', 'off'])
   expect(typeof proxy.m2).toBe('function')
   expect(typeof proxy.m1).toBe('function')
 })
@@ -121,4 +134,28 @@ test('should execute a method with params via the proxy', async () => {
   expect(res).toEqual({ foo: 'bar' })
   expect(s1.m2).toHaveBeenCalledTimes(1)
   expect(s1.m2).toHaveBeenCalledWith(1, 'a', { foo: 'bar' })
+})
+
+test('should forward events to the proxy', async () => {
+  const proxy = await client.makeProxy('s1')
+  const handler = jest.fn()
+  proxy.on('e1', handler)
+  await wait()
+  s1.emit('e1')
+  await wait()
+  expect(handler).toHaveBeenCalledTimes(1)
+})
+
+test.skip('should stop forwarding events to the proxy', async () => {
+  const proxy = await client.makeProxy('s1')
+  const handler = jest.fn()
+  proxy.on('e1', handler)
+  await wait()
+  s1.emit('e1')
+  await wait()
+  proxy.off('e1', handler)
+  await wait()
+  s1.emit('e1')
+  await wait()
+  expect(handler).toHaveBeenCalledTimes(1)
 })

@@ -28,23 +28,34 @@ export class Client extends EventEmitter {
     return this.transport!.sendExec(service, method, params)
   }
 
-  async subscribe(service: string, event: string, handler: (...params: any[]) => void): Promise<void> {
+  async subscribe(service: string, event: string, handler: Function): Promise<void> {
     if (!this.transport) await this.start()
     await this.transport!.sendSubscribe(service, event, handler)
   }
 
-  async unsubscribe(service: string, event: string, handler: (...params: any[]) => void): Promise<void> {
+  async unsubscribe(service: string, event: string, handler: Function): Promise<void> {
     if (!this.transport) await this.start()
     await this.transport!.sendUnsubscribe(service, event, handler)
   }
 
   async makeProxy<T = any>(service: string): Promise<T> {
     if (!this.transport) await this.start()
+
+    // query the spec
     const spec = await this.transport!.sendSpec(service)
+
+    // construct the proxy object
     const proxy: any = {}
+
+    // methods
     for (const method of spec) {
       proxy[method] = async (...params: any[]) => this.exec(service, method, params)
     }
+
+    // events
+    proxy.on = (event: string, handler: Function) => this.subscribe(service, event, handler)
+    proxy.off = (event: string, handler: Function) => this.unsubscribe(service, event, handler)
+
     return proxy
   }
 

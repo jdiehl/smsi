@@ -25,7 +25,7 @@ export class Transport extends EventEmitter {
     return this.sendRequest({ type, service })
   }
 
-  sendSubscribe(service: string, event: string, handler: () => void): void {
+  sendSubscribe(service: string, event: string, handler: Function): void {
     this.subscriptions[service] = this.subscriptions[service] || {}
     this.subscriptions[service][event] = this.subscriptions[service][event] || []
     this.subscriptions[service][event].push(handler)
@@ -34,7 +34,7 @@ export class Transport extends EventEmitter {
     this.send({ type, service, event })
   }
 
-  sendUnsubscribe(service: string, event: string, handler?: () => void): void {
+  sendUnsubscribe(service: string, event: string, handler?: Function): void {
     if (!this.subscriptions[service]) return
     if (!this.subscriptions[service][event]) return
     if (handler) {
