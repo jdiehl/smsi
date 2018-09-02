@@ -4,6 +4,12 @@
   "description": "Simple MicroService Interface",
   "main": "index.js",
   "types": "index.d.ts",
+  "files": [
+    "src/**/*.d.ts",
+    "src/**/*.js",
+    "index.d.ts",
+    "index.js"
+  ],
   "scripts": {
     "build": "tsc --project .",
     "lint": "tslint --project .",
