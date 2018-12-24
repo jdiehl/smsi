@@ -1,9 +1,8 @@
 import { EventEmitter } from 'events'
 import * as uuid from 'uuid'
 import * as WebSocket from 'ws'
-import { ExposedService } from './ExposedService'
 
-export class Transport extends EventEmitter {
+export class SMSITransport extends EventEmitter {
   private handlers: Record<string, Function> = {}
   private subscriptions: Record<string, Record<string, Function[]>> = {}
 
@@ -47,24 +46,24 @@ export class Transport extends EventEmitter {
     this.send({ type, service, event })
   }
 
-  sendResponse(id: string, response: any) {
+  sendResponse(id: string, response: any): void {
     const type = 'response'
     this.send({ id, type, response })
   }
 
-  sendEvent(service: string, event: string, params: any[]) {
+  sendEvent(service: string, event: string, params: any[]): void {
     const type = 'event'
     this.send({ type, service, event, params })
   }
 
   // send error
-  sendError(error: any, id?: string) {
+  sendError(error: any, id?: string): void {
     const type = 'error'
     this.send({ id, type, error })
   }
 
-  async close() {
-    return new Promise(resolve => {
+  async close(): Promise<void> {
+    await new Promise<void>(resolve => {
       this.socket.on('close', () => resolve())
       this.socket.close()
     })
@@ -73,7 +72,7 @@ export class Transport extends EventEmitter {
   // private methods
 
   // send a message
-  private send(data: any) {
+  private send(data: any): void {
     const message = JSON.stringify(data)
     this.socket.send(message)
   }
@@ -83,7 +82,7 @@ export class Transport extends EventEmitter {
     const id = this.makeId()
     data.id = id
     this.send(data)
-    return new Promise<any[]>((resolve, reject) => {
+    return new Promise<any>((resolve, reject) => {
       this.handlers[id] = (err: string, response: any) => {
         err ? reject(err) : resolve(response)
         delete this.handlers[id]
@@ -101,7 +100,7 @@ export class Transport extends EventEmitter {
     }
   }
 
-  private onMessage(data: WebSocket.Data) {
+  private onMessage(data: WebSocket.Data): void {
     let message: any
 
     // parse message
@@ -135,13 +134,14 @@ export class Transport extends EventEmitter {
       if (message.id) {
         this.handlers[message.id](message.error)
       } else {
-        this.emit(message.error)
+        this.emit('error', message.error)
       }
       return
     }
+    default:
+      this.emit(message.type, message)
     }
 
-    this.emit(message.type, message)
   }
 
   private validateMessage(message: any): string | undefined {

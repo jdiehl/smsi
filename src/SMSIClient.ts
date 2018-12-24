@@ -1,25 +1,25 @@
 import { EventEmitter } from 'events'
 import * as WebSocket from 'ws'
-import { Transport } from './Transport'
+import { SMSITransport } from './SMSITransport'
 
-export class Client extends EventEmitter {
-  private transport?: Transport
+export class SMSIClient extends EventEmitter {
+  private transport?: SMSITransport
 
   constructor(private url: string) {
     super()
   }
 
-  async start() {
+  async start(): Promise<void> {
     const ws = new WebSocket(this.url)
-    this.transport = new Transport(ws)
+    this.transport = new SMSITransport(ws)
     this.transport.on('error', err => this.emit('error', err))
     this.transport.on('close', () => this.restart())
-    await new Promise(resolve => {
+    await new Promise<void>(resolve => {
       this.transport!.on('open', () => resolve())
     })
   }
 
-  async stop() {
+  async stop(): Promise<void> {
     if (this.transport) await this.transport.close()
   }
 
@@ -30,12 +30,12 @@ export class Client extends EventEmitter {
 
   async subscribe(service: string, event: string, handler: Function): Promise<void> {
     if (!this.transport) await this.start()
-    await this.transport!.sendSubscribe(service, event, handler)
+    this.transport!.sendSubscribe(service, event, handler)
   }
 
   async unsubscribe(service: string, event: string, handler: Function): Promise<void> {
     if (!this.transport) await this.start()
-    await this.transport!.sendUnsubscribe(service, event, handler)
+    this.transport!.sendUnsubscribe(service, event, handler)
   }
 
   async makeProxy<T = any>(service: string): Promise<T> {
@@ -61,7 +61,7 @@ export class Client extends EventEmitter {
 
   // private methods
 
-  private restart() {
+  private async restart(): Promise<void> {
     // todo
   }
 }

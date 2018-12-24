@@ -1,13 +1,13 @@
 import { EventEmitter } from 'events'
 import * as WebSocket from 'ws'
-import { ExposedService } from './ExposedService'
+import { SMSIExposedService } from './SMSIExposedService'
 import { SMSIExposeOptions, SMSIServerOptions } from './interfaces'
-import { Transport } from './Transport'
+import { SMSITransport } from './SMSITransport'
 
-export class Server extends EventEmitter {
+export class SMSIServer extends EventEmitter {
   server?: WebSocket.Server
 
-  private services: Record<string, ExposedService> = {}
+  private services: Record<string, SMSIExposedService> = {}
 
   get address(): WebSocket.AddressInfo {
     if (!this.server) throw new Error(`Cannot get address: server not running`)
@@ -19,13 +19,13 @@ export class Server extends EventEmitter {
   }
 
   // expose a microservice
-  expose(name: string, service: any, options: SMSIExposeOptions = {}) {
+  expose(name: string, service: any, options: SMSIExposeOptions = {}): void {
     if (this.services[name]) throw new Error(`Cannot expose service: service with name ${name} exists already`)
-    this.services[name] = new ExposedService(service, options)
+    this.services[name] = new SMSIExposedService(service, options)
   }
 
   // start the server and listen on the given port
-  async start() {
+  async start(): Promise<void> {
     if (this.server) throw new Error(`Cannot start server: already running`)
 
     // initialize services
@@ -35,14 +35,14 @@ export class Server extends EventEmitter {
     this.server = new WebSocket.Server(this.options)
     this.server!.on('connection', connection => this.onConnection(connection))
     this.server!.on('error', err => this.emit('error', err))
-    await new Promise(resolve => this.server!.on('listening', () => resolve()))
+    await new Promise<void>(resolve => this.server!.on('listening', () => resolve()))
   }
 
-  async stop() {
+  async stop(): Promise<void> {
     if (!this.server) throw new Error(`Cannot stop server: not running`)
 
     // stop server
-    await new Promise((resolve, reject) => this.server!.close((err) => err ? reject(err) : resolve()))
+    await new Promise<void>((resolve, reject) => this.server!.close((err) => err ? reject(err) : resolve()))
     this.server = undefined
 
     // deinitialize services
@@ -52,7 +52,7 @@ export class Server extends EventEmitter {
   // private methods
 
   private async onConnection(connection: WebSocket): Promise<void> {
-    const transport = new Transport(connection)
+    const transport = new SMSITransport(connection)
     const handlers: Record<string, Record<string, Function>> = {}
 
     // error handling
@@ -80,7 +80,6 @@ export class Server extends EventEmitter {
     // subscribe to events
     transport.on('subscribe', async ({ service, event }) => {
       if (!this.services[service]) return transport.sendError(`Invalid service: ${service}`)
-      if (typeof (this.services[service].on) !== 'function') return transport.sendError(`Service does not support events`)
       this.services[service].on(event, (...params: any[]) => {
         transport.sendEvent(service, event, params)
       })

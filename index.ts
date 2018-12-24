@@ -1,3 +1,3 @@
-export { Server } from './src/Server'
-export { Client } from './src/Client'
+export { SMSIServer } from './src/SMSIServer'
+export { SMSIClient } from './src/SMSIClient'
 export * from './src/interfaces'

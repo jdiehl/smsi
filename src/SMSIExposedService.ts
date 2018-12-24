@@ -1,6 +1,6 @@
 import { SMSIExposeOptions } from './interfaces'
 
-export class ExposedService {
+export class SMSIExposedService {
 
   constructor(private service: any, private options: SMSIExposeOptions) {}
 
@@ -12,16 +12,22 @@ export class ExposedService {
     if (this.options.deinit) await this.options.deinit()
   }
 
-  async run(method: string, params: any[] = []): Promise<void> {
-    return Promise.resolve(this.service[method].apply(this.service, params))
+  async run(method: string, params: any[] = []): Promise<any> {
+    return await this.service[method].apply(this.service, params)
   }
 
-  on(event: string, handler: Function) {
+  on(event: string, handler: Function): void {
+    if (typeof (this.service.on) !== 'function') throw new Error(`Service does not support events`)
     this.service.on(event, handler)
   }
 
-  off(event: string, handler?: Function) {
-    this.service.off(event, handler)
+  off(event: string, handler?: Function): void {
+    if (typeof (this.service.off) !== 'function') throw new Error(`Service does not support events`)
+    if (!handler) {
+      this.service.removeAllListeners(event)
+    } else {
+      this.service.off(event, handler)
+    }
   }
 
   hasMethod(method: string): boolean {

@@ -31,19 +31,19 @@
   "dependencies": {
     "@types/node": "^10.5.2",
     "@types/uuid": "^3.4.4",
-    "@types/ws": "^5.1.2",
+    "@types/ws": "^6.0.0",
     "uuid": "^3.3.2",
     "ws": "^6.0.0"
   },
   "devDependencies": {
-    "@types/got": "^8.3.3",
+    "@types/got": "^9.2.2",
     "@types/jest": "^23.3.0",
     "del-cli": "^1.1.0",
-    "got": "^8.3.2",
+    "got": "^9.5.0",
     "jest": "^23.4.1",
     "ts-jest": "^23.0.1",
     "ts-node": "^7.0.0",
     "tslint": "^5.11.0",
-    "typescript": "^2.9.2"
+    "typescript": "^3.2.2"
   }
 }

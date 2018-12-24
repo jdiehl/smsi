@@ -1,13 +1,13 @@
 import { EventEmitter } from 'events'
-import { Client, Server, SMSIExposeOptions, SMSIServerOptions } from '..'
+import { SMSIClient, SMSIServer, SMSIExposeOptions, SMSIServerOptions } from '..'
 
 let s1: any
 let s2: any
-let server: Server
-let client: Client
+let server: SMSIServer
+let client: SMSIClient
 
 async function wait(delay = 10): Promise<void> {
-  return new Promise<void>(resolve => setTimeout(resolve, delay))
+  await new Promise<void>(resolve => setTimeout(resolve, delay))
 }
 
 beforeEach(async () => {
@@ -16,10 +16,10 @@ beforeEach(async () => {
   s1.m2 = jest.fn().mockResolvedValue({ foo: 'bar' })
   s2 = new EventEmitter()
   s2.foo = jest.fn()
-  server = new Server({ port: 9999 })
+  server = new SMSIServer({ port: 9999 })
   server.expose('s1', s1)
   server.expose('s2', s2)
-  client = new Client('ws://127.0.0.1:9999')
+  client = new SMSIClient('ws://127.0.0.1:9999')
   await server.start()
   await client.start()
 })
@@ -83,7 +83,7 @@ test('should forward multiple events', async () => {
   expect(handler).toHaveBeenCalledTimes(3)
 })
 
-test.skip('should stop forwarding events', async () => {
+test('should stop forwarding events', async () => {
   const handler = jest.fn()
   client.subscribe('s1', 'e1', handler)
   await wait()
