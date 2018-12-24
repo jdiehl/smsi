@@ -1,41 +1,49 @@
 {
-  "name": "smsi-packages",
-  "version": "1.0.0",
-  "description": "",
+  "name": "smsi",
+  "version": "1.0.3",
+  "description": "Simple MicroService Interface",
   "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "src/**/*.d.ts",
+    "src/**/*.js",
+    "index.d.ts",
+    "index.js"
+  ],
   "scripts": {
-    "bootstrap": "lerna bootstrap",
-    "build": "lerna run build",
-    "clean": "lerna run clean",
-    "lint": "lerna run lint",
-    "test": "lerna run test",
-    "prepublish": "yarn lint; yarn test; yarn build",
-    "publish": "lerna publish"
+    "build": "tsc --project .",
+    "lint": "tslint --project .",
+    "test": "jest",
+    "watch": "jest --watchAll",
+    "prepublishOnly": "yarn test; yarn build",
+    "clean": "del index.js index.d.ts 'src/**/*.d.ts' 'src/**/*.js'"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/jdiehl/smsi.git"
-  },
-  "keywords": [],
+  "keywords": [
+    "microservices",
+    "interface"
+  ],
   "author": "Jonathan Diehl <jonathan.diehl@gmail.com>",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/jdiehl/smsi/issues"
   },
   "homepage": "https://github.com/jdiehl/smsi",
+  "dependencies": {
+    "@types/node": "^10.5.2",
+    "@types/uuid": "^3.4.4",
+    "@types/ws": "^5.1.2",
+    "uuid": "^3.3.2",
+    "ws": "^6.0.0"
+  },
   "devDependencies": {
+    "@types/got": "^8.3.3",
     "@types/jest": "^23.3.0",
-    "babel-core": "^6.26.3",
     "del-cli": "^1.1.0",
+    "got": "^8.3.2",
     "jest": "^23.4.1",
-    "lerna": "^2.11.0",
     "ts-jest": "^23.0.1",
     "ts-node": "^7.0.0",
     "tslint": "^5.11.0",
     "typescript": "^2.9.2"
-  },
-  "workspaces": [
-    "packages/*"
-  ],
-  "private": true
+  }
 }
