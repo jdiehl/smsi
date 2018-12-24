@@ -10,17 +10,22 @@ export class SMSIClient extends EventEmitter {
   }
 
   async start(): Promise<void> {
-    const ws = new WebSocket(this.url)
-    this.transport = new SMSITransport(ws)
-    this.transport.on('error', err => this.emit('error', err))
-    this.transport.on('close', () => this.restart())
+    if (this.transport) return
+
     await new Promise<void>(resolve => {
-      this.transport!.on('open', () => resolve())
+      const ws = new WebSocket(this.url)
+      this.transport = new SMSITransport(ws)
+      this.transport.on('error', err => this.emit('error', err))
+      this.transport.on('close', () => this.restart())
+      this.transport.on('open', () => resolve())
     })
   }
 
   async stop(): Promise<void> {
-    if (this.transport) await this.transport.close()
+    if (!this.transport) return
+
+    await this.transport.close()
+    this.transport = undefined
   }
 
   async exec(service: string, method: string, params: any[] = []): Promise<any> {
@@ -30,12 +35,12 @@ export class SMSIClient extends EventEmitter {
 
   async subscribe(service: string, event: string, handler: Function): Promise<void> {
     if (!this.transport) await this.start()
-    this.transport!.sendSubscribe(service, event, handler)
+    await this.transport!.sendSubscribe(service, event, handler)
   }
 
   async unsubscribe(service: string, event: string, handler: Function): Promise<void> {
     if (!this.transport) await this.start()
-    this.transport!.sendUnsubscribe(service, event, handler)
+    await this.transport!.sendUnsubscribe(service, event, handler)
   }
 
   async makeProxy<T = any>(service: string): Promise<T> {
@@ -53,8 +58,8 @@ export class SMSIClient extends EventEmitter {
     }
 
     // events
-    proxy.on = (event: string, handler: Function) => this.subscribe(service, event, handler)
-    proxy.off = (event: string, handler: Function) => this.unsubscribe(service, event, handler)
+    proxy.on = async (event: string, handler: Function) => this.subscribe(service, event, handler)
+    proxy.off = async (event: string, handler: Function) => this.unsubscribe(service, event, handler)
 
     return proxy
   }

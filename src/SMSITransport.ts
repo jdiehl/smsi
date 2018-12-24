@@ -24,16 +24,16 @@ export class SMSITransport extends EventEmitter {
     return this.sendRequest({ type, service })
   }
 
-  sendSubscribe(service: string, event: string, handler: Function): void {
+  async sendSubscribe(service: string, event: string, handler: Function): Promise<void> {
     this.subscriptions[service] = this.subscriptions[service] || {}
     this.subscriptions[service][event] = this.subscriptions[service][event] || []
     this.subscriptions[service][event].push(handler)
 
     const type = 'subscribe'
-    this.send({ type, service, event })
+    await this.sendRequest ({ type, service, event })
   }
 
-  sendUnsubscribe(service: string, event: string, handler?: Function): void {
+  async sendUnsubscribe(service: string, event: string, handler?: Function): Promise<void> {
     if (!this.subscriptions[service]) return
     if (!this.subscriptions[service][event]) return
     if (handler) {
@@ -43,10 +43,10 @@ export class SMSITransport extends EventEmitter {
     }
 
     const type = 'unsubscribe'
-    this.send({ type, service, event })
+    await this.sendRequest({ type, service, event })
   }
 
-  sendResponse(id: string, response: any): void {
+  sendResponse(id: string, response?: any): void {
     const type = 'response'
     this.send({ id, type, response })
   }
@@ -57,7 +57,8 @@ export class SMSITransport extends EventEmitter {
   }
 
   // send error
-  sendError(error: any, id?: string): void {
+  sendError(error: string | Error, id?: string): void {
+    if (error instanceof Error) error = error.message
     const type = 'error'
     this.send({ id, type, error })
   }
@@ -73,13 +74,14 @@ export class SMSITransport extends EventEmitter {
 
   // send a message
   private send(data: any): void {
+    if (this.socket.readyState !== 1) return
     const message = JSON.stringify(data)
     this.socket.send(message)
   }
 
   // send a request
   private async sendRequest(data: any): Promise<any> {
-    const id = this.makeId()
+    const id = uuid()
     data.id = id
     this.send(data)
     return new Promise<any>((resolve, reject) => {
@@ -88,10 +90,6 @@ export class SMSITransport extends EventEmitter {
         delete this.handlers[id]
       }
     })
-  }
-
-  private makeId(): string {
-    return uuid()
   }
 
   private findIdForHandler(handler: () => void): string | undefined {
@@ -171,6 +169,7 @@ export class SMSITransport extends EventEmitter {
       break
     case 'subscribe':
     case 'unsubscribe':
+      if (message.id === undefined) return 'id missing'
       if (typeof message.service !== 'string' || message.service.length < 1) return 'service not a string'
       if (typeof message.event !== 'string' || message.event.length < 1) return 'event not a string'
       break

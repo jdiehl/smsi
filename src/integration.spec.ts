@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events'
-import { SMSIClient, SMSIServer, SMSIExposeOptions, SMSIServerOptions } from '..'
+import { SMSIClient, SMSIServer } from '..'
 
 let s1: any
 let s2: any
@@ -55,8 +55,7 @@ test('should execute a method on the second service', async () => {
 
 test('should forward events', async () => {
   const handler = jest.fn()
-  client.subscribe('s1', 'e1', handler)
-  await wait()
+  await client.subscribe('s1', 'e1', handler)
   s1.emit('e1')
   await wait()
   expect(handler).toHaveBeenCalledTimes(1)
@@ -64,8 +63,7 @@ test('should forward events', async () => {
 
 test('should pass params to the event handler', async () => {
   const handler = jest.fn()
-  client.subscribe('s1', 'e1', handler)
-  await wait()
+  await client.subscribe('s1', 'e1', handler)
   s1.emit('e1', 1, 'a', { foo: 'bar' })
   await wait()
   expect(handler).toHaveBeenCalledTimes(1)
@@ -74,8 +72,7 @@ test('should pass params to the event handler', async () => {
 
 test('should forward multiple events', async () => {
   const handler = jest.fn()
-  client.subscribe('s1', 'e1', handler)
-  await wait()
+  await client.subscribe('s1', 'e1', handler)
   s1.emit('e1')
   s1.emit('e1')
   s1.emit('e1')
@@ -85,15 +82,11 @@ test('should forward multiple events', async () => {
 
 test('should stop forwarding events', async () => {
   const handler = jest.fn()
-  client.subscribe('s1', 'e1', handler)
-  await wait()
+  await client.subscribe('s1', 'e1', handler)
+  await client.unsubscribe('s1', 'e1', handler)
   s1.emit('e1')
   await wait()
-  client.unsubscribe('s1', 'e1', handler)
-  await wait()
-  s1.emit('e1')
-  await wait()
-  expect(handler).toHaveBeenCalledTimes(1)
+  expect(handler).toHaveBeenCalledTimes(0)
 })
 
 test('should report a missing service', async () => {
@@ -139,8 +132,7 @@ test('should execute a method with params via the proxy', async () => {
 test('should forward events to the proxy', async () => {
   const proxy = await client.makeProxy('s1')
   const handler = jest.fn()
-  proxy.on('e1', handler)
-  await wait()
+  await proxy.on('e1', handler)
   s1.emit('e1')
   await wait()
   expect(handler).toHaveBeenCalledTimes(1)
@@ -149,22 +141,27 @@ test('should forward events to the proxy', async () => {
 test('should stop forwarding events to the proxy', async () => {
   const proxy = await client.makeProxy('s1')
   const handler = jest.fn()
-  proxy.on('e1', handler)
-  await wait()
+  await proxy.on('e1', handler)
+  await proxy.off('e1', handler)
   s1.emit('e1')
   await wait()
-  proxy.off('e1', handler)
-  await wait()
-  s1.emit('e1')
-  await wait()
-  expect(handler).toHaveBeenCalledTimes(1)
+  expect(handler).toHaveBeenCalledTimes(0)
 })
 
-test.only('should remove all listeners upon disconnecting', async () => {
+test('should remove all listeners upon disconnecting', async () => {
   const handler = jest.fn()
-  client.subscribe('s1', 'e1', handler)
-  await wait()
+  await client.subscribe('s1', 'e1', handler)
   await client.stop()
+  s1.emit('e1')
+  await wait()
+  expect(handler).toHaveBeenCalledTimes(0)
+})
+
+test('should remove all listeners when disconnected', async () => {
+  const handler = jest.fn()
+  await client.subscribe('s1', 'e1', handler)
+  await client.stop()
+  await wait()
   s1.emit('e1')
   await wait()
   expect(handler).toHaveBeenCalledTimes(0)
