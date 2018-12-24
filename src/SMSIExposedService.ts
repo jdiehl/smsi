@@ -21,9 +21,9 @@ export class SMSIExposedService {
     this.service.on(event, handler)
   }
 
-  off(event: string, handler?: Function): void {
+  off(event?: string, handler?: Function): void {
     if (typeof (this.service.off) !== 'function') throw new Error(`Service does not support events`)
-    if (!handler) {
+    if (!event || !handler) {
       this.service.removeAllListeners(event)
     } else {
       this.service.off(event, handler)

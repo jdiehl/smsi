@@ -146,7 +146,7 @@ test('should forward events to the proxy', async () => {
   expect(handler).toHaveBeenCalledTimes(1)
 })
 
-test.skip('should stop forwarding events to the proxy', async () => {
+test('should stop forwarding events to the proxy', async () => {
   const proxy = await client.makeProxy('s1')
   const handler = jest.fn()
   proxy.on('e1', handler)
@@ -158,4 +158,14 @@ test.skip('should stop forwarding events to the proxy', async () => {
   s1.emit('e1')
   await wait()
   expect(handler).toHaveBeenCalledTimes(1)
+})
+
+test.only('should remove all listeners upon disconnecting', async () => {
+  const handler = jest.fn()
+  client.subscribe('s1', 'e1', handler)
+  await wait()
+  await client.stop()
+  s1.emit('e1')
+  await wait()
+  expect(handler).toHaveBeenCalledTimes(0)
 })

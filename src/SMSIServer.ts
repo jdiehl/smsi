@@ -58,6 +58,13 @@ export class SMSIServer extends EventEmitter {
     // error handling
     transport.on('error', err => this.emit('error', err))
 
+    // closing
+    transport.on('close', () => {
+      for (const service of Object.keys(this.services)) {
+        this.services[service].off()
+      }
+    })
+
     // send the spec
     transport.on('spec', async ({ id, service }) => {
       if (!this.services[service]) return transport.sendError(`Invalid service: ${service}`, id)
