@@ -14,8 +14,7 @@ beforeEach(async () => {
   s1 = new EventEmitter()
   s1.m1 = jest.fn().mockReturnValue('ok')
   s1.m2 = jest.fn().mockResolvedValue({ foo: 'bar' })
-  s2 = new EventEmitter()
-  s2.foo = jest.fn()
+  s2 = { foo: jest.fn() }
   server = new SMSIServer({ port: 9999 })
   server.expose('s1', s1)
   server.expose('s2', s2)
@@ -97,6 +96,10 @@ test('should report a missing method', async () => {
   await expect(client.exec('s1', 'foo')).rejects.toBe('Invalid method: s1.foo')
 })
 
+test('should report a service that does not support events', async () => {
+  await expect(client.subscribe('s2', 'e1', () => {})).rejects.toBe('Invalid service or service does not support events: s2')
+})
+
 test('should forward an rejection as an error', async () => {
   s1.m1.mockRejectedValue('rejected')
   await expect(client.exec('s1', 'm1')).rejects.toBe('rejected')
@@ -112,6 +115,14 @@ test('should create a proxy', async () => {
   expect(Object.keys(proxy)).toEqual(['m1', 'm2', 'on', 'off'])
   expect(typeof proxy.m2).toBe('function')
   expect(typeof proxy.m1).toBe('function')
+  expect(typeof proxy.on).toBe('function')
+  expect(typeof proxy.off).toBe('function')
+})
+
+test('should create a proxy without events', async () => {
+  const proxy = await client.makeProxy('s2')
+  expect(Object.keys(proxy)).toEqual(['foo'])
+  expect(typeof proxy.foo).toBe('function')
 })
 
 test('should execute a method via the proxy', async () => {

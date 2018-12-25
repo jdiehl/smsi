@@ -53,13 +53,15 @@ export class SMSIClient extends EventEmitter {
     const proxy: any = {}
 
     // methods
-    for (const method of spec) {
+    for (const method of spec.methods) {
       proxy[method] = async (...params: any[]) => this.exec(service, method, params)
     }
 
     // events
-    proxy.on = async (event: string, handler: Function) => this.subscribe(service, event, handler)
-    proxy.off = async (event: string, handler: Function) => this.unsubscribe(service, event, handler)
+    if (spec.events) {
+      proxy.on = async (event: string, handler: Function) => this.subscribe(service, event, handler)
+      proxy.off = async (event: string, handler: Function) => this.unsubscribe(service, event, handler)
+    }
 
     return proxy
   }

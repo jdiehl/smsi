@@ -111,10 +111,12 @@ export class SMSIServer extends EventEmitter {
 
   }
 
-  private serviceSpec(name: string): string[] {
+  private serviceSpec(name: string): any {
     const service = this.services[name]
     if (!service) throw new Error(`Invalid service: ${name}`)
-    return Object.keys(service).filter(key => typeof service[key] === 'function')
+    const methods = Object.keys(service).filter(key => typeof service[key] === 'function')
+    const events = isEventEmitter(service)
+    return { methods, events }
   }
 
   private async serviceExec(name: string, method: string, params: any[]): Promise<any> {

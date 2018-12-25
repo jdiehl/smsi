@@ -19,7 +19,7 @@ export class SMSITransport extends EventEmitter {
     return this.sendRequest({ type, service, method, params })
   }
 
-  async sendSpec(service: string): Promise<string[]> {
+  async sendSpec(service: string): Promise<any> {
     const type = 'spec'
     return this.sendRequest({ type, service })
   }
