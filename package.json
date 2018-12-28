@@ -16,7 +16,7 @@
     "test": "jest",
     "watch": "jest --watchAll",
     "prepublishOnly": "yarn test & yarn build",
-    "clean": "del index.js index.d.ts 'src/**/*.d.ts' 'src/**/*.js'"
+    "clean": "rm index.js index.d.ts src/*.d.ts src/*.js"
   },
   "keywords": [
     "microservices",
@@ -38,7 +38,6 @@
   "devDependencies": {
     "@types/got": "^9.2.2",
     "@types/jest": "^23.3.0",
-    "del-cli": "^1.1.0",
     "got": "^9.5.0",
     "jest": "^23.4.1",
     "ts-jest": "^23.0.1",
