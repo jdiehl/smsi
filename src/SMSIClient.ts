@@ -16,7 +16,7 @@ export class SMSIClient extends EventEmitter {
       const ws = new WebSocket(this.url)
       this.transport = new SMSITransport(ws)
       this.transport.on('error', err => this.emit('error', err))
-      this.transport.on('close', () => this.restart())
+      this.transport.on('close', () => this.onClose())
       this.transport.on('open', () => resolve())
     })
   }
@@ -68,7 +68,7 @@ export class SMSIClient extends EventEmitter {
 
   // private methods
 
-  private async restart(): Promise<void> {
-    // todo
+  private onClose(): void {
+    this.transport = undefined
   }
 }

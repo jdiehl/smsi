@@ -177,3 +177,16 @@ test('should remove all listeners when disconnected', async () => {
   await wait()
   expect(handler).toHaveBeenCalledTimes(0)
 })
+
+test('should reject a request on a closing connection', async () => {
+  await server.stop()
+  await expect(client.exec('s1', 'm1')).rejects.toBe('Connection closed')
+})
+
+test('should reconnect automatically', async () => {
+  await server.stop()
+  await server.start()
+  await wait()
+  await client.exec('s1', 'm1')
+  expect(s1.m1).toBeCalledTimes(1)
+})

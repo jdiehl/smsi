@@ -92,7 +92,7 @@ export class SMSIServer extends EventEmitter {
       if (handlers[service][event]) return transport.sendError(`Already subscribed to event: ${service}#${event}`, id)
 
       handlers[service][event] = (...params: any[]) => {
-        transport.sendEvent(service, event, params)
+        if (transport.connected) transport.sendEvent(service, event, params)
       }
       s.on(event, handlers[service][event])
       transport.sendResponse(id)

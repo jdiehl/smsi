@@ -5,13 +5,18 @@ import * as WebSocket from 'ws'
 export class SMSITransport extends EventEmitter {
   private handlers: Record<string, Function> = {}
   private subscriptions: Record<string, Record<string, Function[]>> = {}
+  private requestRejections: Function[] = []
 
   constructor(private socket: WebSocket) {
     super()
     this.socket.on('error', err => this.emit('error', err))
     this.socket.on('open', () => this.emit('open'))
-    this.socket.on('close', () => this.emit('close'))
+    this.socket.on('close', () => this.onClose())
     this.socket.on('message', message => this.onMessage(message))
+  }
+
+  get connected(): boolean {
+    return this.socket.readyState === 1
   }
 
   async sendExec(service: string, method: string, params: any[]): Promise<any[]> {
@@ -46,21 +51,21 @@ export class SMSITransport extends EventEmitter {
     await this.sendRequest({ type, service, event })
   }
 
-  sendResponse(id: string, response?: any): void {
+  sendResponse(id: string, response?: any): Promise<void> {
     const type = 'response'
-    this.send({ id, type, response })
+    return this.send({ id, type, response })
   }
 
-  sendEvent(service: string, event: string, params: any[]): void {
+  sendEvent(service: string, event: string, params: any[]): Promise<void> {
     const type = 'event'
-    this.send({ type, service, event, params })
+    return this.send({ type, service, event, params })
   }
 
   // send error
-  sendError(error: string | Error, id?: string): void {
+  sendError(error: string | Error, id?: string): Promise<void> {
     if (error instanceof Error) error = error.message
     const type = 'error'
-    this.send({ id, type, error })
+    return this.send({ id, type, error })
   }
 
   async close(): Promise<void> {
@@ -73,29 +78,31 @@ export class SMSITransport extends EventEmitter {
   // private methods
 
   // send a message
-  private send(data: any): void {
-    if (this.socket.readyState !== 1) return
+  private send(data: any): Promise<void> {
+    if (!this.connected) return Promise.reject('Not connected')
     const message = JSON.stringify(data)
-    this.socket.send(message)
+    return new Promise((resolve, reject) => {
+      this.socket.send(message, err => {
+        if (err) return reject(err)
+        resolve()
+      })
+    })
   }
 
   // send a request
   private async sendRequest(data: any): Promise<any> {
     const id = uuid()
     data.id = id
-    this.send(data)
+    await this.send(data)
     return new Promise<any>((resolve, reject) => {
+      this.requestRejections.push(reject)
       this.handlers[id] = (err: string, response: any) => {
+        const i = this.requestRejections.indexOf(reject)
+        this.requestRejections.splice(i, 1)
         err ? reject(err) : resolve(response)
         delete this.handlers[id]
       }
     })
-  }
-
-  private findIdForHandler(handler: () => void): string | undefined {
-    for (const id of Object.keys(this.handlers)) {
-      if (this.handlers[id] === handler) return id
-    }
   }
 
   private onMessage(data: WebSocket.Data): void {
@@ -105,17 +112,24 @@ export class SMSITransport extends EventEmitter {
     try {
       message = JSON.parse(data.toString())
     } catch (err) {
-      return this.sendError(`Invalid message: parse error`)
+      this.sendError(`Invalid message: parse error`)
+      return
     }
 
     // validate message
     const error = this.validateMessage(message)
-    if (error) return this.sendError(`Invalid message: ${error}`)
+    if (error) {
+      this.sendError(`Invalid message: ${error}`)
+      return
+    }
 
     switch (message.type) {
     case 'response': {
       const handler = this.handlers[message.id]
-      if (!handler) return this.sendError(`unknown id ${message.id}`)
+      if (!handler) {
+        this.sendError(`unknown id ${message.id}`)
+        return
+      }
       handler(null, message.response)
       return
     }
@@ -176,6 +190,15 @@ export class SMSITransport extends EventEmitter {
     default:
       return 'unknown type'
     }
+  }
+
+  // reject all outstanding requests
+  private onClose(): void {
+    this.emit('close')
+    for (const reject of this.requestRejections) {
+      reject('Connection closed')
+    }
+    this.requestRejections = []
   }
 
 }
