@@ -62,8 +62,10 @@ export class SMSITransport extends EventEmitter {
   }
 
   // send error
-  sendError(error: string | Error, id?: string): Promise<void> {
-    if (error instanceof Error) error = error.message
+  sendError(error: any, id?: string): Promise<void> {
+    if (!error || typeof error.toString !== 'function') error = 'Unknown error'
+    if (error.message) error = error.message
+    error = error.toString()
     const type = 'error'
     return this.send({ id, type, error })
   }
