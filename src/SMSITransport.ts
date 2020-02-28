@@ -98,7 +98,7 @@ export class SMSITransport extends EventEmitter {
     await this.send(data)
     return new Promise<any>((resolve, reject) => {
       this.requestRejections.push(reject)
-      this.handlers[id] = (err: string, response: any) => {
+      this.handlers[id] = (err: string, response: any): void => {
         const i = this.requestRejections.indexOf(reject)
         this.requestRejections.splice(i, 1)
         err ? reject(err) : resolve(response)
@@ -140,7 +140,7 @@ export class SMSITransport extends EventEmitter {
       if (!this.subscriptions[service]) return
       if (!this.subscriptions[service][event]) return
       for (const handler of this.subscriptions[service][event]) {
-        handler.apply(null, message.params || [])
+        handler(...(message.params || []))
       }
       return
     }

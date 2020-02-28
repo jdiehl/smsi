@@ -91,7 +91,7 @@ export class SMSIServer extends EventEmitter {
       if (!handlers[service]) handlers[service] = {}
       if (handlers[service][event]) return transport.sendError(`Already subscribed to event: ${service}#${event}`, id)
 
-      handlers[service][event] = (...params: any[]) => {
+      handlers[service][event] = (...params: any[]): void => {
         if (transport.connected) transport.sendEvent(service, event, params)
       }
       s.on(event, handlers[service][event])
@@ -123,7 +123,7 @@ export class SMSIServer extends EventEmitter {
     const service = this.services[name]
     if (!service) throw new Error(`Invalid service: ${name}`)
     if (typeof service[method] !== 'function') throw new Error(`Invalid method: ${name}.${method}`)
-    return await service[method].apply(service, params)
+    return await service[method](...params)
   }
 
 }
