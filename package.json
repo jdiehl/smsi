@@ -1,6 +1,6 @@
 {
   "name": "smsi",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Simple MicroService Interface",
   "main": "index.js",
   "types": "index.d.ts",
