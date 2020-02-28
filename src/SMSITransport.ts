@@ -93,7 +93,7 @@ export class SMSITransport extends EventEmitter {
 
   // send a request
   private async sendRequest(data: any): Promise<any> {
-    const id = uuid()
+    const id = uuid.v4()
     data.id = id
     await this.send(data)
     return new Promise<any>((resolve, reject) => {
